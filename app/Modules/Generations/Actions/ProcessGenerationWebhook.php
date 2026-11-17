@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Generations\Models\Generation;
 use Modules\Generations\Models\GenerationWebhookEvent;
 use Modules\Generations\Services\ApplyImageGenerationResult;
-use Modules\Generations\Services\PixelForgeWebhookEventValidator;
+use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
 use RuntimeException;
 use UnexpectedValueException;
 
@@ -16,7 +16,7 @@ use UnexpectedValueException;
 final class ProcessGenerationWebhook
 {
     public function __construct(
-        private readonly PixelForgeWebhookEventValidator $eventValidator,
+        private readonly PixelForgePayloadValidator $eventValidator,
         private readonly ApplyImageGenerationResult $applyResult
     ) {}
 
@@ -24,7 +24,7 @@ final class ProcessGenerationWebhook
     public function handle(string $payload): void
     {
         // Validate and decode the webhook payload before writing to the database.
-        $event = $this->eventValidator->validate($payload);
+        $event = $this->eventValidator->validateEvent($payload);
 
         // Create Or First handles Uniqueness ...
         // The Provider might send 2 or more concurrent requests...

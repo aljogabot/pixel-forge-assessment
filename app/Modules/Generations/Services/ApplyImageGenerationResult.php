@@ -60,7 +60,7 @@ final class ApplyImageGenerationResult
             return;
         }
 
-        // processing, failed and succeeded only passes here ...
+        // queued, processing, failed and succeeded
         $generation->status = $result['status'];
 
         if ($result['status'] === 'failed') {

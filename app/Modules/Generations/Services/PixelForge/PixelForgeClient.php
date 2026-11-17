@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Generations\Services;
+namespace Modules\Generations\Services\PixelForge;
 
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;

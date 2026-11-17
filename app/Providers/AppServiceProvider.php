@@ -9,7 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Modules\Generations\Contracts\GenerationWebhookVerifier;
 use Modules\Generations\Contracts\ImageGenerationProvider;
-use Modules\Generations\Services\PixelForgeClient;
+use Modules\Generations\Services\PixelForge\PixelForgeClient;
 
 class AppServiceProvider extends ServiceProvider
 {
