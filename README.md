@@ -96,8 +96,14 @@ Controllers handle HTTP requests, actions coordinate business operations,
 and services implement reusable behavior.
 
 Provider contracts separate the generation workflow from the PixelForge
-adapter. Provider implementations are resolved through configuration and
-the Laravel service container.
+adapter. `GenerationServiceProvider` registers the configured provider's
+client, payload validator, and webhook processor against their contracts
+in Laravel's service container.
+
+The active provider is selected through `GENERATION_PROVIDER`, with
+implementation mappings and settings defined in `config/services.php`.
+This centralizes provider wiring and lets business operations depend on
+contracts rather than instantiate PixelForge classes.
 
 Submission runs in a background job using a persistent idempotency key.
 Webhook processing uses unique event identifiers, database transactions,
