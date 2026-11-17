@@ -122,9 +122,23 @@ final class SubmitImageGenerationJob implements ShouldQueue
                 return;
             }
 
-            // TODO: Stop retries for permanent errors such as invalid credentials,
-            // invalid parameters, blocked prompts, and idempotency-key misuse.
-            // For now, throwing here causes Laravel to retry them too.
+            // These errors require corrected input, credentials, or configuration.
+            // Repeating the same request will not resolve them.
+            if (in_array($errorCode, [
+                'invalid_api_key',
+                'validation_failed',
+                'content_policy_violation',
+                'idempotency_key_reused',
+                'not_found',
+            ], true)) {
+                $this->fail(new RuntimeException(
+                    'Pixelforge request failed: ' . $errorCode,
+                ));
+
+                return;
+            }
+
+            // Retry unclassified failures within the configured attempt limit.
             throw new RuntimeException(
                 'Unable to obtain the provider generation.',
             );
