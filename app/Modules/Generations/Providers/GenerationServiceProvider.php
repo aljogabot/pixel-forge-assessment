@@ -7,6 +7,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\Generations\Contracts\GeneratePayloadValidator;
 use Modules\Generations\Contracts\ImageGenerationProvider;
 use Modules\Generations\Contracts\WebhookProviderProcessor;
+use Modules\Generations\Services\ProviderRequestLimiter;
 
 final class GenerationServiceProvider extends ServiceProvider
 {
@@ -47,6 +48,15 @@ final class GenerationServiceProvider extends ServiceProvider
                         $provider['payload_validator'],
                     ),
                 ],
+            ),
+        );
+
+
+        $this->app->bind(
+            ProviderRequestLimiter::class,
+            fn() => new ProviderRequestLimiter(
+                scope: $providerName,
+                requestsPerMinute: (int) $provider['traffic']['requests_per_minute'],
             ),
         );
     }

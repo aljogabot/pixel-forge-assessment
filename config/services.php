@@ -55,6 +55,12 @@ return [
                 ),
                 'api_key' => env('PIXELFORGE_API_KEY'),
                 'webhook_secret' => env('PIXELFORGE_WEBHOOK_SECRET'),
+
+                'traffic' => [
+                    // created a headroom of 50 vs 60 on pixel's documentation ...
+                    'requests_per_minute' => 50,
+                    'max_active_generations' => 3,
+                ],
             ],
         ],
     ],

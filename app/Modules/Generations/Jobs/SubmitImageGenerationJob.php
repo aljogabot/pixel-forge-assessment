@@ -12,16 +12,26 @@ use Modules\Generations\Services\ApplyImageGenerationResult;
 use RuntimeException;
 use UnexpectedValueException;
 use Throwable;
+use DateTimeInterface;
+use Modules\Generations\Services\ProviderRequestLimiter;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 
-final class SubmitImageGenerationJob implements ShouldQueue
+final class SubmitImageGenerationJob implements ShouldQueue, ShouldBeUnique
 {
     use Queueable;
 
-    // Allow at most six queue attempts.
-    public int $tries = 6;
+    public int $maxExceptions = 6;
+
+    // Safety expiry for the uniqueness lock: 30 minutes.
+    public int $uniqueFor = 1800;
 
     // Limit each job execution to 30 seconds.
     public int $timeout = 30;
+
+    public function uniqueId(): string
+    {
+        return (string) $this->generationId;
+    }
 
     public function __construct(
         public readonly int $generationId
@@ -33,15 +43,29 @@ final class SubmitImageGenerationJob implements ShouldQueue
         return [5, 15, 30, 60, 120];
     }
 
+    public function retryUntil(): DateTimeInterface
+    {
+        return now()->addMinutes(15);
+    }
+
     public function handle(
         ImageGenerationProvider $provider,
         ApplyImageGenerationResult $applyResult,
         GeneratePayloadValidator $payloadValidator,
+        ProviderRequestLimiter $requestLimiter,
     ): void {
         $generation = Generation::query()
             ->findOrFail($this->generationId);
 
         if ($provider->isTerminal($generation->status)) {
+            return;
+        }
+
+        $waitSeconds = $requestLimiter->acquire();
+
+        if ($waitSeconds > 0) {
+            $this->release($waitSeconds);
+
             return;
         }
 
@@ -70,12 +94,6 @@ final class SubmitImageGenerationJob implements ShouldQueue
         }
 
         if ($decision['outcome'] === 'retry') {
-            if ($this->attempts() >= $this->tries) {
-                $this->fail(new RuntimeException($decision['message']));
-
-                return;
-            }
-
             $delays = $this->backoff();
 
             $backoffDelay = $delays[min($this->attempts() - 1, count($delays) - 1)];

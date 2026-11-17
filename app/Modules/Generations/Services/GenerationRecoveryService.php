@@ -12,6 +12,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Modules\Generations\Jobs\SubmitImageGenerationJob;
 use Throwable;
 
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
+
 final class GenerationRecoveryService
 {
     public function initialize(Generation $generation): void
@@ -95,20 +99,35 @@ final class GenerationRecoveryService
     public function dispatchDue(): int
     {
         $dispatched = 0;
+        $uniqueLock = new UniqueLock(Cache::store());
 
         foreach ($this->due() as $recovery) {
-            $generationId = $this->claim($recovery);
+            $job = new SubmitImageGenerationJob(
+                $recovery->generation_id,
+            );
 
-            if ($generationId === null) {
+            // Reserve job uniqueness before consuming a recovery attempt.
+            if (! $uniqueLock->acquire($job)) {
                 continue;
             }
 
             try {
-                SubmitImageGenerationJob::dispatch($generationId)
-                    ->afterCommit();
+                $generationId = $this->claim($recovery);
+
+                if ($generationId === null) {
+                    $uniqueLock->release($job);
+
+                    continue;
+                }
+
+                // Uniqueness was acquired above. Dispatch directly through
+                // the bus so PendingDispatch doesn't acquire it a second time.
+                Bus::dispatch($job);
 
                 $dispatched++;
             } catch (Throwable $exception) {
+                $uniqueLock->release($job);
+
                 report($exception);
 
                 GenerationRecoveryModel::query()
