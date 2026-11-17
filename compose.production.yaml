@@ -40,6 +40,13 @@ services:
       - --timeout=30
       - --max-time=3600
     stop_grace_period: 60s
+    # cloudwatch logging, removed for cost purposes
+    # logging:
+    #   driver: awslogs
+    #   options:
+    #     awslogs-region: YOUR_AWS_REGION
+    #     awslogs-group: /prompt-edit-demo
+    #     tag: "{{.Name}}/{{.ID}}"
 
   scheduler:
     <<: *app
