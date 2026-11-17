@@ -9,7 +9,6 @@ use Modules\Generations\Contracts\GeneratePayloadValidator;
 use Modules\Generations\Contracts\ImageGenerationProvider;
 use Modules\Generations\Models\Generation;
 use Modules\Generations\Services\ApplyImageGenerationResult;
-use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
 use RuntimeException;
 use UnexpectedValueException;
 use Throwable;
@@ -42,7 +41,7 @@ final class SubmitImageGenerationJob implements ShouldQueue
         $generation = Generation::query()
             ->findOrFail($this->generationId);
 
-        if (in_array($generation->status, ['succeeded', 'failed'], true)) {
+        if ($provider->isTerminal($generation->status)) {
             return;
         }
 
@@ -56,94 +55,37 @@ final class SubmitImageGenerationJob implements ShouldQueue
 
             // Provider submission and response handling come next.
             // In This case, Provider is PixelForge, we can just change Providers without updating this code ...
-            // I havent used other providers, but we can have an adapter pattern to suit the params ... and response ...
-            $response = $provider->submit(
-                parameters: [
-                    'prompt' => $generation->prompt,
-                    'size' => $generation->size,
-                    'quality' => $generation->quality,
-                    'reference_images' => $generation->reference_images ?? [],
-                    'metadata' => [
-                        'local_generation_id' => (string) $generation->getKey(),
-                    ],
-                ],
-                // This Key prevents duplication request to the provider ...
-                // PixelForge does not have a lookup by this key so if there is a record, we will use that
-                // Probably they do that internally ...
-                idempotencyKey: $generation->idempotency_key,
-            );
+            $response = $provider->submit($generation);
 
             $expectedStatus = 202;
         }
 
 
-        if ($response->status() !== $expectedStatus) {
-            $errorCode = $response->json('error.code');
+        $decision = $provider->classifyResponse($response, $expectedStatus);
 
-            $retryable = $response->status() === 503
-                || (
-                    $response->status() === 429
-                    && in_array($errorCode, [
-                        'rate_limit_exceeded',
-                        'concurrency_limit_exceeded',
-                    ], true)
-                );
+        if ($decision['outcome'] === 'failed') {
+            $this->fail(new RuntimeException($decision['message']));
 
-            if ($retryable) {
-                // Stop retrying after the configured attempt limit.
-                if ($this->attempts() >= $this->tries) {
-                    $this->fail(new RuntimeException(
-                        'Provider submission or retrieval retry limit reached.',
-                    ));
+            return;
+        }
 
-                    return;
-                }
-
-                // Pixelforge documents Retry-After as a number of seconds.
-                $header = trim((string) $response->header('Retry-After'));
-
-                $providerDelay = ctype_digit($header)
-                    ? (int) $header
-                    : 0;
-
-                $delays = $this->backoff();
-
-                $backoffDelay = $delays[min($this->attempts() - 1, count($delays) - 1)];
-
-                // Never retry earlier than the provider permits.
-                $this->release(max($providerDelay, $backoffDelay));
+        if ($decision['outcome'] === 'retry') {
+            if ($this->attempts() >= $this->tries) {
+                $this->fail(new RuntimeException($decision['message']));
 
                 return;
             }
 
-            if ($errorCode === 'daily_limit_exceeded') {
-                $this->fail(new RuntimeException(
-                    'The provider daily generation quota is exhausted.',
-                ));
+            $delays = $this->backoff();
 
-                return;
-            }
+            $backoffDelay = $delays[min($this->attempts() - 1, count($delays) - 1)];
 
-            // These errors require corrected input, credentials, or configuration.
-            // Repeating the same request will not resolve them.
-            if (in_array($errorCode, [
-                'invalid_api_key',
-                'validation_failed',
-                'content_policy_violation',
-                'idempotency_key_reused',
-                'not_found',
-            ], true)) {
-                $this->fail(new RuntimeException(
-                    'Pixelforge request failed: ' . $errorCode,
-                ));
+            $this->release(max(
+                $decision['retry_after_seconds'],
+                $backoffDelay,
+            ));
 
-                return;
-            }
-
-            // Retry unclassified failures within the configured attempt limit.
-            throw new RuntimeException(
-                'Unable to obtain the provider generation.',
-            );
+            return;
         }
 
         $result = $response->json();

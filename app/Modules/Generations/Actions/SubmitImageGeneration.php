@@ -45,6 +45,7 @@ final class SubmitImageGeneration
         $generation->estimated_charge_usd = $estimatedCharge;
         $generation->save();
 
+        // Actual Creation of Image Generation on the provider
         SubmitImageGenerationJob::dispatch($generation->getKey())
             ->afterCommit();
 
