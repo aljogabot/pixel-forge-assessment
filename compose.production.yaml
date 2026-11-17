@@ -24,6 +24,9 @@ services:
       - "80:80"
     depends_on:
       - app
+    volumes:
+      - /var/www/certbot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
 
   worker:
     <<: *app
