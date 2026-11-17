@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Modules\Generations\Contracts\GeneratePayloadValidator;
 use Modules\Generations\Contracts\GenerationWebhookVerifier;
 use Modules\Generations\Contracts\ImageGenerationProvider;
+use Modules\Generations\Contracts\WebhookValidatorContract;
 use Modules\Generations\Services\PixelForge\PixelForgeClient;
 use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
 
@@ -35,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(ImageGenerationProvider::class, PixelForgeClient::class);
         $this->app->bind(GenerationWebhookVerifier::class, PixelForgeClient::class);
+
+        $this->app->bind(GeneratePayloadValidator::class, PixelForgePayloadValidator::class);
+        $this->app->bind(WebhookValidatorContract::class, PixelForgePayloadValidator::class);
     }
 
     /**

@@ -5,6 +5,7 @@ namespace Modules\Generations\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Modules\Generations\Contracts\GeneratePayloadValidator;
 use Modules\Generations\Contracts\ImageGenerationProvider;
 use Modules\Generations\Models\Generation;
 use Modules\Generations\Services\ApplyImageGenerationResult;
@@ -36,7 +37,7 @@ final class SubmitImageGenerationJob implements ShouldQueue
     public function handle(
         ImageGenerationProvider $provider,
         ApplyImageGenerationResult $applyResult,
-        PixelForgePayloadValidator $payloadValidator,
+        GeneratePayloadValidator $payloadValidator,
     ): void {
         $generation = Generation::query()
             ->findOrFail($this->generationId);

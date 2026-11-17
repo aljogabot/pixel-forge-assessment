@@ -3,6 +3,7 @@
 namespace Modules\Generations\Actions;
 
 use Illuminate\Support\Facades\DB;
+use Modules\Generations\Contracts\WebhookValidatorContract;
 use Modules\Generations\Models\Generation;
 use Modules\Generations\Models\GenerationWebhookEvent;
 use Modules\Generations\Services\ApplyImageGenerationResult;
@@ -16,7 +17,7 @@ use UnexpectedValueException;
 final class ProcessGenerationWebhook
 {
     public function __construct(
-        private readonly PixelForgePayloadValidator $eventValidator,
+        private readonly WebhookValidatorContract $eventValidator,
         private readonly ApplyImageGenerationResult $applyResult
     ) {}
 

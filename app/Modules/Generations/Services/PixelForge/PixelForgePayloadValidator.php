@@ -3,9 +3,11 @@
 namespace Modules\Generations\Services\PixelForge;
 
 use Illuminate\Support\Facades\Validator;
+use Modules\Generations\Contracts\GeneratePayloadValidator;
+use Modules\Generations\Contracts\WebhookValidatorContract;
 use UnexpectedValueException;
 
-final class PixelForgePayloadValidator
+final class PixelForgePayloadValidator implements WebhookValidatorContract, GeneratePayloadValidator
 {
     /**
      * Validate pricing data returned by Pixelforge.
