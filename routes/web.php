@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Generations\GenerationController;
-use App\Http\Controllers\Webhooks\PixelForgeWebhookController;
+use App\Http\Controllers\Webhooks\ImageProviderWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -28,5 +28,5 @@ Route::post('generations', [
     ->name('generations.store');
 
 
-Route::post('webhooks/pixelforge', PixelForgeWebhookController::class)
+Route::post('webhooks/pixelforge', ImageProviderWebhookController::class)
     ->name('webhooks.pixelforge');

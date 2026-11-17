@@ -7,7 +7,6 @@ use Modules\Generations\Contracts\WebhookValidatorContract;
 use Modules\Generations\Models\Generation;
 use Modules\Generations\Models\GenerationWebhookEvent;
 use Modules\Generations\Services\ApplyImageGenerationResult;
-use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
 use RuntimeException;
 use UnexpectedValueException;
 

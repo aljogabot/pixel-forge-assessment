@@ -61,8 +61,14 @@ class PixelForgeClient implements ImageGenerationProvider, GenerationWebhookVeri
 
     public function verifyWebhookSignature(
         string $payload,
-        string $header,
+        array $headers,
     ): bool {
+        $header = trim($headers['pixelforge-signature'][0] ?? '');
+
+        if ($header === '') {
+            return false;
+        }
+
         if ($this->webhookSecret === '') {
             return false;
         }
