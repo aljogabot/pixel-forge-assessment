@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Modules\Generations\Contracts\GenerationWebhookVerifier;
+use Modules\Generations\Contracts\ImageGenerationProvider;
+use Modules\Generations\Services\PixelForgeClient;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -16,6 +19,19 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         //
+        $this->app->bind(
+            PixelForgeClient::class,
+            fn() => new PixelForgeClient(
+                baseUrl: config('services.generation_provider.pixel_forge.base_url'),
+                apiKey: config('services.generation_provider.pixel_forge.api_key') ?? '',
+                webhookSecret: config(
+                    'services.generation_provider.pixel_forge.webhook_secret',
+                ) ?? '',
+            ),
+        );
+
+        $this->app->bind(ImageGenerationProvider::class, PixelForgeClient::class);
+        $this->app->bind(GenerationWebhookVerifier::class, PixelForgeClient::class);
     }
 
     /**
@@ -37,14 +53,15 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
+        Password::defaults(
+            fn(): ?Password => app()->isProduction()
+                ? Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
                 ->symbols()
                 ->uncompromised()
-            : null,
+                : null,
         );
     }
 }
