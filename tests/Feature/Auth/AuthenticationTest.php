@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use Modules\User\Models\User;
 
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
