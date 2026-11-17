@@ -86,6 +86,19 @@ final class ProcessGenerationWebhook
                 ->lockForUpdate()
                 ->first();
 
+            // An early webhook may arrive before SubmitImageGenerationJob
+            // saves the provider generation ID from the submission response.
+            if ($generation === null) {
+                $localId = $result['metadata']['local_generation_id'] ?? null;
+
+                if ($localId !== null) {
+                    $generation = Generation::query()
+                        ->whereKey($localId)
+                        ->lockForUpdate()
+                        ->first();
+                }
+            }
+
             if ($generation === null) {
                 throw new RuntimeException(
                     'The webhook generation is not available locally yet.',
