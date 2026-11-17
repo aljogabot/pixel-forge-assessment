@@ -23,8 +23,14 @@ final class ProcessGenerationWebhook
     /** @param string $payload */
     public function handle(string $payload): void
     {
+        $event = json_decode($payload, true, 512);
+
+        if (! is_array($event)) {
+            throw new UnexpectedValueException('Invalid webhook JSON.');
+        }
+
         // Validate and decode the webhook payload before writing to the database.
-        $event = $this->eventValidator->validateEvent($payload);
+        $this->eventValidator->validateEvent($event);
 
         // Create Or First handles Uniqueness ...
         // The Provider might send 2 or more concurrent requests...

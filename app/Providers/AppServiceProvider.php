@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -10,6 +11,7 @@ use Illuminate\Validation\Rules\Password;
 use Modules\Generations\Contracts\GenerationWebhookVerifier;
 use Modules\Generations\Contracts\ImageGenerationProvider;
 use Modules\Generations\Services\PixelForge\PixelForgeClient;
+use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,12 +23,13 @@ class AppServiceProvider extends ServiceProvider
         //
         $this->app->bind(
             PixelForgeClient::class,
-            fn() => new PixelForgeClient(
+            fn(Application $app) => new PixelForgeClient(
                 baseUrl: config('services.generation_provider.pixel_forge.base_url'),
                 apiKey: config('services.generation_provider.pixel_forge.api_key') ?? '',
                 webhookSecret: config(
                     'services.generation_provider.pixel_forge.webhook_secret',
                 ) ?? '',
+                payloadValidator: $app->make(PixelForgePayloadValidator::class)
             ),
         );
 

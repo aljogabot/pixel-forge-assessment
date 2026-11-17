@@ -79,7 +79,7 @@ final class SubmitImageGenerationJob implements ShouldQueue
         }
 
         // Validate the same generation fields used by webhook processing.
-        $result = $payloadValidator->validateGeneration($result);
+        $payloadValidator->validateGeneration($result);
 
         // We can have a Repository so that we can change persistence implementations
         DB::transaction(function () use ($result, $applyResult): void {
