@@ -50,18 +50,18 @@ final class SubmitImageGenerationJob implements ShouldQueue
                 $generation->provider_generation_id,
             );
 
-            $expectedStatus = 200;
+            $operation = 'retrieve';
         } else {
 
             // Provider submission and response handling come next.
             // In This case, Provider is PixelForge, we can just change Providers without updating this code ...
             $response = $provider->submit($generation);
 
-            $expectedStatus = 202;
+            $operation = 'submit';
         }
 
 
-        $decision = $provider->classifyResponse($response, $expectedStatus);
+        $decision = $provider->classifyResponse($response, $operation);
 
         if ($decision['outcome'] === 'failed') {
             $this->fail(new RuntimeException($decision['message']));

@@ -27,6 +27,6 @@ interface ImageGenerationProvider
      */
     public function classifyResponse(
         Response $response,
-        int $expectedStatus,
+        string $operation,
     ): array;
 }

@@ -92,8 +92,16 @@ class PixelForgeClient implements ImageGenerationProvider
      */
     public function classifyResponse(
         Response $response,
-        int $expectedStatus,
+        string $operation,
     ): array {
+        $expectedStatus = match ($operation) {
+            'submit' => 202,
+            'retrieve' => 200,
+            default => throw new \InvalidArgumentException(
+                'Unsupported provider operation: ' . $operation,
+            ),
+        };
+
         if ($response->status() === $expectedStatus) {
             return [
                 'outcome' => 'accepted',
