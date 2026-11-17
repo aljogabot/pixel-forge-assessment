@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Modules\Generations\Actions\ProcessGenerationWebhook;
-use Modules\Generations\Contracts\GenerationWebhookVerifier;
 use UnexpectedValueException;
 
 class ImageProviderWebhookController extends Controller
@@ -16,12 +15,11 @@ class ImageProviderWebhookController extends Controller
      */
     public function __invoke(
         Request $request,
-        GenerationWebhookVerifier $verifier,
         ProcessGenerationWebhook $processor
     ): Response {
         $payload = $request->getContent();
 
-        $valid = $verifier->verifyWebhookSignature(
+        $valid = $processor->verifyWebhookSignature(
             payload: $payload,
             headers: $request->headers->all()
         );

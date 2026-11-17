@@ -9,11 +9,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Modules\Generations\Contracts\GeneratePayloadValidator;
-use Modules\Generations\Contracts\GenerationWebhookVerifier;
 use Modules\Generations\Contracts\ImageGenerationProvider;
-use Modules\Generations\Contracts\WebhookValidatorContract;
+use Modules\Generations\Contracts\WebhookProviderProcessor;
+use Modules\Generations\Services\ApplyImageGenerationResult;
 use Modules\Generations\Services\PixelForge\PixelForgeClient;
 use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
+use Modules\Generations\Services\PixelForge\PixelWebhookProcessor;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,18 +29,24 @@ class AppServiceProvider extends ServiceProvider
             fn(Application $app) => new PixelForgeClient(
                 baseUrl: config('services.generation_provider.pixel_forge.base_url'),
                 apiKey: config('services.generation_provider.pixel_forge.api_key') ?? '',
-                webhookSecret: config(
-                    'services.generation_provider.pixel_forge.webhook_secret',
-                ) ?? '',
                 payloadValidator: $app->make(PixelForgePayloadValidator::class)
             ),
         );
 
-        $this->app->bind(ImageGenerationProvider::class, PixelForgeClient::class);
-        $this->app->bind(GenerationWebhookVerifier::class, PixelForgeClient::class);
+        $this->app->bind(
+            PixelWebhookProcessor::class,
+            fn(Application $app) => new PixelWebhookProcessor(
+                webhookSecret: config(
+                    'services.generation_provider.pixel_forge.webhook_secret',
+                ) ?? '',
+                eventValidator: $app->make(PixelForgePayloadValidator::class),
+                applyResult: $app->make(ApplyImageGenerationResult::class),
+            )
+        );
 
+        $this->app->bind(WebhookProviderProcessor::class, PixelWebhookProcessor::class);
+        $this->app->bind(ImageGenerationProvider::class, PixelForgeClient::class);
         $this->app->bind(GeneratePayloadValidator::class, PixelForgePayloadValidator::class);
-        $this->app->bind(WebhookValidatorContract::class, PixelForgePayloadValidator::class);
     }
 
     /**

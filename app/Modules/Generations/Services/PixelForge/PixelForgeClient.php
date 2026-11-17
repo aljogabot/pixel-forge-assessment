@@ -7,16 +7,14 @@ use Illuminate\Support\Facades\Cache;
 use Modules\Generations\Contracts\ImageGenerationProvider;
 
 use Illuminate\Support\Facades\Http;
-use Modules\Generations\Contracts\GenerationWebhookVerifier;
 use Modules\Generations\Models\Generation;
 use UnexpectedValueException;
 
-class PixelForgeClient implements ImageGenerationProvider, GenerationWebhookVerifier
+class PixelForgeClient implements ImageGenerationProvider
 {
     public function __construct(
         private readonly string $baseUrl,
         private readonly string $apiKey,
-        private readonly string $webhookSecret,
         private readonly PixelForgePayloadValidator $payloadValidator,
     ) {}
 
@@ -57,52 +55,6 @@ class PixelForgeClient implements ImageGenerationProvider, GenerationWebhookVeri
                     . '/generations/'
                     . rawurlencode($providerGenerationId),
             );
-    }
-
-    public function verifyWebhookSignature(
-        string $payload,
-        array $headers,
-    ): bool {
-        $header = trim($headers['pixelforge-signature'][0] ?? '');
-
-        if ($header === '') {
-            return false;
-        }
-
-        if ($this->webhookSecret === '') {
-            return false;
-        }
-
-        $parts = [];
-
-        foreach (explode(',', $header) as $part) {
-            [$key, $value] = array_pad(
-                explode('=', trim($part), 2),
-                2,
-                '',
-            );
-
-            $parts[$key] = $value;
-        }
-
-        $timestamp = $parts['t'] ?? '';
-        $signature = $parts['v1'] ?? '';
-
-        if (
-            ! ctype_digit($timestamp)
-            || ! preg_match('/\A[0-9a-f]{64}\z/', $signature)
-            || abs(time() - (int) $timestamp) > 300
-        ) {
-            return false;
-        }
-
-        $expected = hash_hmac(
-            'sha256',
-            $timestamp . '.' . $payload,
-            $this->webhookSecret,
-        );
-
-        return hash_equals($expected, $signature);
     }
 
     public function isTerminal(string $status): bool
