@@ -3,9 +3,9 @@
 namespace Modules\Generations\Actions;
 
 use Illuminate\Support\Facades\DB;
-use Modules\Billing\Services\ImageGenerationCalculateCost;
 use Modules\Generations\Models\Generation;
 use Modules\Generations\Models\GenerationWebhookEvent;
+use Modules\Generations\Services\ApplyImageGenerationResult;
 use Modules\Generations\Services\PixelForgeWebhookEventValidator;
 use RuntimeException;
 use UnexpectedValueException;
@@ -17,7 +17,7 @@ final class ProcessGenerationWebhook
 {
     public function __construct(
         private readonly PixelForgeWebhookEventValidator $eventValidator,
-        private readonly ImageGenerationCalculateCost $calculator
+        private readonly ApplyImageGenerationResult $applyResult
     ) {}
 
     /** @param string $payload */
@@ -87,67 +87,12 @@ final class ProcessGenerationWebhook
             }
 
 
-            // Prevent any late events that might overwrite newer event
-            if (in_array(
-                $generation->status,
-                ['succeeded', 'failed'],
-                true,
-            )) {
-                $lockedEvent->processed_at = now();
-                $lockedEvent->save();
-
-                return;
-            }
-
-            // Update the generation when Pixelforge starts processing it.
-            if ($result['status'] === 'processing') {
-                $generation->status = 'processing';
-                $generation->save();
-
-                $lockedEvent->processed_at = now();
-                $lockedEvent->save();
-
-                return;
-            }
-
-            // Failed status
-            if ($result['status'] === 'failed') {
-                $generation->status = 'failed';
-                $generation->provider_cost_usd = '0.000000000000';
-                $generation->actual_charge_usd = '0.000000000000';
-                $generation->completed_at = $result['completed_at'];
-                $generation->error_code = $result['error']['code'];
-                $generation->error_message = $result['error']['message'];
-                $generation->save();
-
-                $lockedEvent->processed_at = now();
-                $lockedEvent->save();
-
-                return;
-            }
-
-
-            // Success
-            if ($result['status'] === 'succeeded') {
-                $cost = $this->calculator->handle(
-                    usage: $result['usage'],
-                    rates: $result['rates'],
-                );
-
-                $generation->status = 'succeeded';
-                $generation->provider_cost_usd = $cost['provider_cost_usd'];
-                $generation->actual_charge_usd = $cost['actual_charge_usd'];
-                $generation->usage = $result['usage'];
-                $generation->rates = $result['rates'];
-                $generation->image_url = $result['image_url'];
-                $generation->image_url_expires_at =
-                    $result['image_url_expires_at'];
-                $generation->completed_at = $result['completed_at'];
-                $generation->error_code = null;
-                $generation->error_message = null;
-            }
-
-            $generation->save();
+            // The service protects terminal states and applies status,
+            // failure details, or successful settlement.
+            $this->applyResult->handle(
+                generation: $generation,
+                result: $result,
+            );
 
             $lockedEvent->processed_at = now();
             $lockedEvent->save();
