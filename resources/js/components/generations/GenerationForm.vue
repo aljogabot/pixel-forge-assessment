@@ -2,6 +2,8 @@
 import { router, useHttp } from "@inertiajs/vue3";
 import { ref, watch } from "vue";
 import { estimate, store } from "@/routes/generations";
+import ReferenceImageInputs from "@/components/generations/form/ReferenceImageInputs.vue";
+import GenerationEstimate from "@/components/generations/form/GenerationEstimate.vue";
 
 const form = useHttp<
     {
@@ -129,47 +131,28 @@ function generate(): void {
             </div>
         </div>
 
-        <div class="flex flex-col gap-3 rounded-lg border p-4">
-            <button
-                type="button"
-                :disabled="
-                    form.processing || isSubmitting || !form.prompt.trim()
-                "
-                class="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
-                @click="getEstimate"
-            >
-                {{ form.processing ? "Calculating…" : "Get estimate" }}
-            </button>
+        <ReferenceImageInputs
+            v-model="form.reference_images"
+            :disabled="form.processing || isSubmitting"
+        />
 
-            <ul
-                v-if="form.hasErrors"
-                role="alert"
-                class="list-inside list-disc text-sm text-destructive"
-            >
-                <li v-for="(message, field) in form.errors" :key="field">
-                    {{ message }}
-                </li>
-            </ul>
+        <ul
+            v-if="form.hasErrors"
+            role="alert"
+            class="list-inside list-disc text-sm text-destructive"
+        >
+            <li v-for="(message, field) in form.errors" :key="field">
+                {{ message }}
+            </li>
+        </ul>
 
-            <p
-                v-if="estimateError"
-                role="alert"
-                class="text-sm text-destructive"
-            >
-                {{ estimateError }}
-            </p>
-
-            <div aria-live="polite">
-                <p v-if="estimatedCharge !== null" class="font-medium">
-                    Estimated charge: ${{ estimatedCharge }} USD
-                </p>
-            </div>
-
-            <p class="text-sm text-muted-foreground">
-                Includes a 25% markup. Final charge depends on actual token
-                usage. Failed generations are free.
-            </p>
-        </div>
+        <GenerationEstimate
+            :charge="estimatedCharge"
+            :calculating="form.processing"
+            :disabled="isSubmitting || !form.prompt.trim()"
+            :error-message="estimateError"
+            @estimate="getEstimate"
+        />
 
         <button
             type="button"
@@ -178,6 +161,7 @@ function generate(): void {
             "
             class="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
             @click="generate"
+            :style="{ cursor: 'pointer' }"
         >
             {{ isSubmitting ? "Submitting…" : "Generate image" }}
         </button>

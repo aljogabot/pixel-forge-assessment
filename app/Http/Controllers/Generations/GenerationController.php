@@ -10,6 +10,15 @@ use Modules\Generations\Http\Requests\Generations\GenerationRequest;
 use Illuminate\Http\RedirectResponse;
 use Modules\Generations\Actions\SubmitImageGeneration;
 
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Validation\ValidationException;
+use UnexpectedValueException;
+
 class GenerationController extends Controller
 {
     //
@@ -35,11 +44,46 @@ class GenerationController extends Controller
         GenerationRequest $request,
         SubmitImageGeneration $submit,
     ): RedirectResponse {
-        $submit->handle(
-            user: $request->user(),
-            generationInput: $request->validated(),
-        );
+        try {
+            $submit->handle(
+                user: $request->user(),
+                generationInput: $request->validated(),
+            );
+        } catch (
+            ConnectionException
+            | RequestException
+            | UnexpectedValueException $exception
+        ) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'submission' =>
+                'Unable to submit your generation because provider pricing '
+                    . 'is unavailable. Please try again later.',
+            ]);
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Your image generation request was submitted successfully.',
+        ]);
 
         return to_route('dashboard');
+    }
+
+
+    public function index(Request $request): Response
+    {
+        return Inertia::render('Dashboard', [
+            'generations' => $request->user()
+                ->generations()
+                ->orderByDesc('id')
+                ->paginate(20),
+        ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('generations/Create');
     }
 }
