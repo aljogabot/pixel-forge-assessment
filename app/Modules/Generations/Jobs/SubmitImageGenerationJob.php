@@ -11,6 +11,7 @@ use Modules\Generations\Services\ApplyImageGenerationResult;
 use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
 use RuntimeException;
 use UnexpectedValueException;
+use Throwable;
 
 final class SubmitImageGenerationJob implements ShouldQueue
 {
@@ -165,6 +166,35 @@ final class SubmitImageGenerationJob implements ShouldQueue
                 generation: $generation,
                 result: $result,
             );
+        });
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        DB::transaction(function (): void {
+            $generation = Generation::query()
+                ->lockForUpdate()
+                ->find($this->generationId);
+
+            if ($generation === null) {
+                return;
+            }
+
+            // A webhook may already have completed the generation.
+            if (in_array(
+                $generation->status,
+                ['succeeded', 'failed'],
+                true,
+            )) {
+                return;
+            }
+
+            // Record the job failure without assuming the provider outcome.
+            $generation->error_code = 'submission_job_failed';
+            $generation->error_message =
+                'Submission or status retrieval stopped. Recovery is required.';
+
+            $generation->save();
         });
     }
 }
