@@ -1,5 +1,9 @@
 <?php
 
+use Modules\Generations\Services\PixelForge\PixelForgeClient;
+use Modules\Generations\Services\PixelForge\PixelForgePayloadValidator;
+use Modules\Generations\Services\PixelForge\PixelWebhookProcessor;
+
 return [
 
     /*
@@ -37,13 +41,21 @@ return [
 
 
     'generation_provider' => [
-        'pixel_forge' => [
-            'base_url' => env(
-                'PIXELFORGE_BASE_URL',
-                'https://pixelforge.promptedit.dev/v1',
-            ),
-            'api_key' => env('PIXELFORGE_API_KEY'),
-            'webhook_secret' => env('PIXELFORGE_WEBHOOK_SECRET'),
+        'default' => env('GENERATION_PROVIDER', 'pixel_forge'),
+
+        'providers' => [
+            'pixel_forge' => [
+                'client' => PixelForgeClient::class,
+                'webhook_processor' => PixelWebhookProcessor::class,
+                'payload_validator' => PixelForgePayloadValidator::class,
+
+                'base_url' => env(
+                    'PIXELFORGE_BASE_URL',
+                    'https://pixelforge.promptedit.dev/v1',
+                ),
+                'api_key' => env('PIXELFORGE_API_KEY'),
+                'webhook_secret' => env('PIXELFORGE_WEBHOOK_SECRET'),
+            ],
         ],
     ],
 
