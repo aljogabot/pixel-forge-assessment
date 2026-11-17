@@ -9,6 +9,7 @@ use Modules\Generations\Contracts\ImageGenerationProvider;
 use Illuminate\Support\Facades\Http;
 use Modules\Generations\Contracts\GenerationWebhookVerifier;
 use UnexpectedValueException;
+use Illuminate\Support\Facades\Validator;
 
 class PixelForgeClient implements ImageGenerationProvider, GenerationWebhookVerifier
 {
@@ -32,13 +33,54 @@ class PixelForgeClient implements ImageGenerationProvider, GenerationWebhookVeri
 
             $pricing = $response->json();
 
-            if (
-                ! is_array($pricing)
-                || ! is_array($pricing['rates'] ?? null)
-                || ! is_array($pricing['tokens'] ?? null)
+            $rules = [
+                'rates' => ['required', 'array'],
+                'tokens' => ['required', 'array'],
+                'tokens.characters_per_text_token' => ['required', 'integer', 'min:1'],
+                'tokens.per_reference_image' => ['required', 'integer', 'min:0'],
+            ];
+
+            foreach (
+                [
+                    'input_text_tokens',
+                    'input_image_tokens',
+                    'output_tokens',
+                    'reasoning_tokens',
+                ] as $category
             ) {
+                $rules["rates.$category"] = [
+                    'required',
+                    'string',
+                    'regex:/\A[0-9]+(?:\.[0-9]+)?\z/',
+                ];
+            }
+
+            foreach (['low', 'medium', 'high'] as $quality) {
+                foreach (['1024x1024', '1536x1024', '1024x1536'] as $size) {
+                    $rules["tokens.output.$quality.$size"] = [
+                        'required',
+                        'integer',
+                        'min:0',
+                    ];
+                }
+
+                $rules["tokens.reasoning.$quality.min"] = [
+                    'required',
+                    'integer',
+                    'min:0',
+                ];
+
+                $rules["tokens.reasoning.$quality.max"] = [
+                    'required',
+                    'integer',
+                    'min:0',
+                    "gte:tokens.reasoning.$quality.min",
+                ];
+            }
+
+            if (Validator::make($pricing, $rules)->fails()) {
                 throw new UnexpectedValueException(
-                    'Pixelforge returned an invalid pricing response.',
+                    'Pixelforge returned invalid pricing rates or token rules.',
                 );
             }
 
