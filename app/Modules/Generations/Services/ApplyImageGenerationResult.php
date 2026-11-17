@@ -10,6 +10,7 @@ final class ApplyImageGenerationResult
 {
     public function __construct(
         private readonly ImageGenerationCalculateCost $calculator,
+        private readonly GenerationRecoveryService $recovery
     ) {}
 
     /**
@@ -90,6 +91,10 @@ final class ApplyImageGenerationResult
         }
 
         $generation->save();
+
+        if (in_array($generation->status, ['succeeded', 'failed'], true)) {
+            $this->recovery->complete($generation);
+        }
 
         // if status is processing ...
         // we can wait for another webhook for the final result ...
