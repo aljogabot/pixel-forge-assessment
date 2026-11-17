@@ -11,7 +11,6 @@ final class PixelForgePayloadValidator
      * Validate pricing data returned by Pixelforge.
      *
      * @param array<string, mixed> $pricing
-     * @return array<string, mixed>
      */
     public function validatePricing(array $pricing): void
     {
@@ -20,6 +19,9 @@ final class PixelForgePayloadValidator
             'tokens' => ['required', 'array'],
             'tokens.characters_per_text_token' => ['required', 'integer', 'min:1'],
             'tokens.per_reference_image' => ['required', 'integer', 'min:0'],
+            // Without these, we could accept rates expressed in an unexpected currency or unit.
+            'currency' => ['required', 'in:usd'],
+            'unit' => ['required', 'in:per_1m_tokens'],
         ];
 
         foreach (
@@ -113,6 +115,12 @@ final class PixelForgePayloadValidator
                 'required_if:status,succeeded,failed',
                 'nullable',
                 'date',
+            ],
+            'metadata' => ['sometimes', 'array'],
+            'metadata.local_generation_id' => [
+                'sometimes',
+                'string',
+                'regex:/\A[1-9][0-9]*\z/',
             ],
         ];
 
