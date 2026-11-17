@@ -7,6 +7,7 @@ use Modules\Billing\Actions\GetImageGenerationPriceEstimate;
 use Modules\Generations\Contracts\ImageGenerationProvider;
 use Modules\Generations\Models\Generation;
 use Modules\User\Models\User;
+use Modules\Generations\Jobs\SubmitImageGenerationJob;
 
 final class SubmitImageGeneration
 {
@@ -43,6 +44,9 @@ final class SubmitImageGeneration
         $generation->status = 'pending';
         $generation->estimated_charge_usd = $estimatedCharge;
         $generation->save();
+
+        SubmitImageGenerationJob::dispatch($generation->getKey())
+            ->afterCommit();
 
         return $generation;
     }

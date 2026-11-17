@@ -20,7 +20,12 @@ Route::post('generations/estimate', [
     ->middleware('throttle:30,1')
     ->name('generations.estimate');
 
-
+Route::post('generations', [
+    GenerationController::class,
+    'store',
+])
+    ->middleware('throttle:10,1')
+    ->name('generations.store');
 
 
 Route::post('webhooks/pixelforge', PixelForgeWebhookController::class)
