@@ -19,7 +19,7 @@ test('security page is displayed', function () {
         ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route('security.edit'))
         ->assertInertia(
-            fn (Assert $page) => $page
+            fn(Assert $page) => $page
                 ->component('settings/Security')
                 ->where('canManageTwoFactor', true)
                 ->where('twoFactorEnabled', false),
@@ -43,7 +43,7 @@ test('security page requires password confirmation when enabled', function () {
 });
 
 test('security page renders without two factor when feature is disabled', function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
+    // $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
 
     config(['fortify.features' => []]);
 
@@ -54,9 +54,10 @@ test('security page renders without two factor when feature is disabled', functi
         ->get(route('security.edit'))
         ->assertOk()
         ->assertInertia(
-            fn (Assert $page) => $page
+            fn(Assert $page) => $page
                 ->component('settings/Security')
-                ->where('canManageTwoFactor', false)
+                // ->where('canManageTwoFactor', false)
+                ->missing('canManageTwoFactor')
                 ->missing('twoFactorEnabled')
                 ->missing('requiresConfirmation'),
         );
