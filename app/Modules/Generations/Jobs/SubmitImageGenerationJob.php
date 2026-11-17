@@ -16,9 +16,21 @@ final class SubmitImageGenerationJob implements ShouldQueue
 {
     use Queueable;
 
+    // Allow at most six queue attempts.
+    public int $tries = 6;
+
+    // Limit each job execution to 30 seconds.
+    public int $timeout = 30;
+
     public function __construct(
         public readonly int $generationId
     ) {}
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [5, 15, 30, 60, 120];
+    }
 
     public function handle(
         ImageGenerationProvider $provider,
@@ -64,7 +76,55 @@ final class SubmitImageGenerationJob implements ShouldQueue
 
 
         if ($response->status() !== $expectedStatus) {
-            // Explicit rejection and retry handling comes next.
+            $errorCode = $response->json('error.code');
+
+            $retryable = $response->status() === 503
+                || (
+                    $response->status() === 429
+                    && in_array($errorCode, [
+                        'rate_limit_exceeded',
+                        'concurrency_limit_exceeded',
+                    ], true)
+                );
+
+            if ($retryable) {
+                // Stop retrying after the configured attempt limit.
+                if ($this->attempts() >= $this->tries) {
+                    $this->fail(new RuntimeException(
+                        'Provider submission or retrieval retry limit reached.',
+                    ));
+
+                    return;
+                }
+
+                // Pixelforge documents Retry-After as a number of seconds.
+                $header = trim((string) $response->header('Retry-After'));
+
+                $providerDelay = ctype_digit($header)
+                    ? (int) $header
+                    : 0;
+
+                $delays = $this->backoff();
+
+                $backoffDelay = $delays[min($this->attempts() - 1, count($delays) - 1)];
+
+                // Never retry earlier than the provider permits.
+                $this->release(max($providerDelay, $backoffDelay));
+
+                return;
+            }
+
+            if ($errorCode === 'daily_limit_exceeded') {
+                $this->fail(new RuntimeException(
+                    'The provider daily generation quota is exhausted.',
+                ));
+
+                return;
+            }
+
+            // TODO: Stop retries for permanent errors such as invalid credentials,
+            // invalid parameters, blocked prompts, and idempotency-key misuse.
+            // For now, throwing here causes Laravel to retry them too.
             throw new RuntimeException(
                 'Unable to obtain the provider generation.',
             );
