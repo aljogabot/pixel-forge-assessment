@@ -45,16 +45,26 @@ return [
 
         'providers' => [
             'pixel_forge' => [
-                'client' => PixelForgeClient::class,
-                'webhook_processor' => PixelWebhookProcessor::class,
-                'payload_validator' => PixelForgePayloadValidator::class,
+                'client' => [
+                    'class' => PixelForgeClient::class,
+                    'settings' => [
+                        'baseUrl' => env(
+                            'PIXELFORGE_BASE_URL',
+                            'https://pixelforge.promptedit.dev/v1',
+                        ),
+                        'apiKey' => env('PIXELFORGE_API_KEY'),
+                    ]
+                ],
+                'webhook_processor' => [
+                    'class' => PixelWebhookProcessor::class,
+                    'settings' => [
+                        'webhookSecret' => env('PIXELFORGE_WEBHOOK_SECRET'),
+                    ]
+                ],
 
-                'base_url' => env(
-                    'PIXELFORGE_BASE_URL',
-                    'https://pixelforge.promptedit.dev/v1',
-                ),
-                'api_key' => env('PIXELFORGE_API_KEY'),
-                'webhook_secret' => env('PIXELFORGE_WEBHOOK_SECRET'),
+                'payload_validator' => [
+                    'class' => PixelForgePayloadValidator::class,
+                ],
 
                 'traffic' => [
                     // created a headroom of 50 vs 60 on pixel's documentation ...
@@ -66,3 +76,16 @@ return [
     ],
 
 ];
+
+
+class GenerationProvider
+{
+    public static function provide(string $provider, string $class)
+    {
+        $provider = config('services.generation_provider.providers.' . $provider . '.' . $class);
+        return app()->make($provider['class'], $provider['settings']);
+    }
+}
+
+
+$pixelForgeClient = GenerationProvider::provideClient('pixel_forge', 'client');

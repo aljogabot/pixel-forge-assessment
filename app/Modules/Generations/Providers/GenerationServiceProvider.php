@@ -21,18 +21,17 @@ final class GenerationServiceProvider extends ServiceProvider
 
         $this->app->bind(
             GeneratePayloadValidator::class,
-            $provider['payload_validator'],
+            $provider['payload_validator']['class'],
         );
 
         $this->app->bind(
             ImageGenerationProvider::class,
             fn(Application $app): ImageGenerationProvider => $app->make(
-                $provider['client'],
+                $provider['client']['class'],
                 [
-                    'baseUrl' => $provider['base_url'],
-                    'apiKey' => $provider['api_key'] ?? '',
+                    ...$provider['client']['settings'],
                     'payloadValidator' => $app->make(
-                        $provider['payload_validator'],
+                        $provider['payload_validator']['class'],
                     ),
                 ],
             ),
@@ -41,11 +40,11 @@ final class GenerationServiceProvider extends ServiceProvider
         $this->app->bind(
             WebhookProviderProcessor::class,
             fn(Application $app): WebhookProviderProcessor => $app->make(
-                $provider['webhook_processor'],
+                $provider['webhook_processor']['class'],
                 [
-                    'webhookSecret' => $provider['webhook_secret'] ?? '',
+                    ...$provider['webhook_processor']['settings'],
                     'eventValidator' => $app->make(
-                        $provider['payload_validator'],
+                        $provider['payload_validator']['class'],
                     ),
                 ],
             ),

@@ -43,6 +43,8 @@ final class SubmitImageGenerationJob implements ShouldQueue, ShouldBeUnique
         return [5, 15, 30, 60, 120];
     }
 
+    // retry deadline, if after 15 minutes the job is still not finished
+    // deadline past, it will go to failed jobs
     public function retryUntil(): DateTimeInterface
     {
         return now()->addMinutes(15);
@@ -64,11 +66,14 @@ final class SubmitImageGenerationJob implements ShouldQueue, ShouldBeUnique
         $waitSeconds = $requestLimiter->acquire();
 
         if ($waitSeconds > 0) {
+            // puts the job back in the queue
             $this->release($waitSeconds);
 
             return;
         }
 
+        // if the webhook has already returned id to prevent dedupes
+        // or dispatched by recovery ..
         if ($generation->provider_generation_id !== null) {
             $response = $provider->retrieve(
                 $generation->provider_generation_id,
@@ -96,8 +101,11 @@ final class SubmitImageGenerationJob implements ShouldQueue, ShouldBeUnique
         if ($decision['outcome'] === 'retry') {
             $delays = $this->backoff();
 
+            // each delay is associated with the retry attempt
             $backoffDelay = $delays[min($this->attempts() - 1, count($delays) - 1)];
 
+            // will be released
+            // put into queue again
             $this->release(max(
                 $decision['retry_after_seconds'],
                 $backoffDelay,

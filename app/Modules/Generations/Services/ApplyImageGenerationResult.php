@@ -92,6 +92,7 @@ final class ApplyImageGenerationResult
 
         $generation->save();
 
+        // disable recovery when status has finished its course ...
         if (in_array($generation->status, ['succeeded', 'failed'], true)) {
             $this->recovery->complete($generation);
         }

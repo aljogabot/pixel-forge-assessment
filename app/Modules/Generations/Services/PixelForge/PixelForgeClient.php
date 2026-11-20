@@ -89,6 +89,10 @@ class PixelForgeClient implements ImageGenerationProvider
      *     retry_after_seconds: int,
      *     message: string
      * }
+     *
+     * accepted is ok
+     * retry is to be retried
+     * failed is for investigation
      */
     public function classifyResponse(
         Response $response,

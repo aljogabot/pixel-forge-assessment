@@ -4,6 +4,7 @@ namespace Modules\Generations\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'provider',
@@ -20,5 +21,11 @@ final class GenerationWebhookEvent extends Model
             'payload' => 'array',
             'processed_at' => 'immutable_datetime',
         ];
+    }
+
+    /** @return BelongsTo<Generation, $this> */
+    public function generation(): BelongsTo
+    {
+        return $this->belongsTo(Generation::class);
     }
 }

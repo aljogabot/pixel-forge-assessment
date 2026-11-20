@@ -56,6 +56,8 @@ class PixelWebhookProcessor implements WebhookProviderProcessor
             return false;
         }
 
+        // for the payload, it should have the exact characters/bytes sent
+        // The signature checks the exact bytes sent, including spaces.
         $expected = hash_hmac(
             'sha256',
             $timestamp . '.' . $payload,
@@ -150,6 +152,7 @@ class PixelWebhookProcessor implements WebhookProviderProcessor
                 );
             }
 
+            $lockedEvent->generation_id = $generation->getKey();
 
             // The service protects terminal states and applies status,
             // failure details, or successful settlement.

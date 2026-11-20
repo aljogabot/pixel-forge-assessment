@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\User\Models\User;
 
 #[UseFactory(GenerationFactory::class)]
@@ -28,6 +29,7 @@ class Generation extends Model
             'started_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
             'image_url_expires_at' => 'immutable_datetime',
+            'estimated_rates' => 'array'
         ];
     }
 
@@ -35,5 +37,11 @@ class Generation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return HasMany<GenerationWebhookEvent, $this> */
+    public function webhookEvents(): HasMany
+    {
+        return $this->hasMany(GenerationWebhookEvent::class);
     }
 }

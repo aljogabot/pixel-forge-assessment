@@ -31,15 +31,18 @@ final class SubmitImageGeneration
         User $user,
         array $generationInput,
     ): Generation {
+        $pricing = $this->provider->pricing();
+
         $estimatedCharge = $this->priceEstimate->handle(
             generationInput: $generationInput,
-            pricing: $this->provider->pricing(),
+            pricing: $pricing,
         );
 
         return DB::transaction(function () use (
             $user,
             $generationInput,
             $estimatedCharge,
+            $pricing
         ): Generation {
             $generation = new Generation();
             $generation->user_id = $user->getKey();
@@ -51,11 +54,15 @@ final class SubmitImageGeneration
                 $generationInput['reference_images'] ?? [];
             $generation->status = 'pending';
             $generation->estimated_charge_usd = $estimatedCharge;
+            $generation->estimated_rates = $pricing;
             $generation->save();
 
             // Initialize recovery tracking in case submission stalls
             // or a completion webhook is missed.
             $this->recovery->initialize($generation);
+
+            // Actually the best way is to have a transactional outbox here ...
+            // there are times that sending a job to the redis queue will have an error
 
             // Dispatch only after both records commit successfully.
             SubmitImageGenerationJob::dispatch($generation->getKey())

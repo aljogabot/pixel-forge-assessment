@@ -22,6 +22,14 @@ final class ProviderRequestLimiter
      * Reserve one request slot.
      *
      * Returns zero when allowed, otherwise seconds to wait.
+     *
+     * The value of the lock is:
+     *
+     *  [
+            1795204800.123,
+            1795204810.456,
+            1795204820.789,
+        ]
      */
     public function acquire(): int
     {
@@ -32,11 +40,18 @@ final class ProviderRequestLimiter
                 $now = microtime(true);
 
                 // Retain requests reserved within the last 60 seconds.
+                // the timestamps where workers started to process,
+                // and filter them by requests that processed now - 60 seconds ...
+                // meaning within the minute ...
                 $requests = array_values(array_filter(
                     Cache::get($key, []),
                     fn(float $timestamp): bool => $timestamp > $now - 60,
                 ));
 
+
+                // so get the count of the requests within the last minute
+                // MINUS the providers request per minute from the provider settings ...
+                // return atleast 1 second or if the earliest time within the minute ...
                 if (count($requests) >= $this->requestsPerMinute) {
                     return max(
                         1,
